@@ -1,0 +1,77 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+.terraform
+tfplan.*
+tfplan
+backup/
+
+# AWS
+*.pem
+*.key
+id_rsa*
+
+# Python
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+setup.py
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.venv
+.env
+.env.*
+.env.local
+.env.*
+secrets.json
+credentials.json
+
+# Docker
+.docker/
+
+# Pytest
+.coverage
+
+# Misc
+*.ipynb
+lambda/lambda_layer
+.vs/
+unit_test
+tests
+testing_files
+.pytest_cache
+airflow.cfg
+docs
+*.zip

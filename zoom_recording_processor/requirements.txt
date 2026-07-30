@@ -1,0 +1,17 @@
+# requirements.txt
+# AWS SDK
+boto3>=1.34.0
+botocore>=1.34.0
+
+# HTTP requests (for Zoom API)
+requests>=2.31.0
+
+# Cryptography (for CloudFront signed URLs)
+cryptography>=41.0.0
+
+# Optional but recommended for production
+# AWS X-Ray SDK (for distributed tracing)
+# aws-xray-sdk>=2.12.0
+
+# For better JSON handling (optional)
+# python-json-logger>=2.0.7
