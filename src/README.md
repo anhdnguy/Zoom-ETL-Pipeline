@@ -1,27 +1,32 @@
 # src/ — Zoom ETL Core Library
 
-The core Python library that handles Zoom API communication, data transformation, and S3 storage. This code is called by the Airflow DAG (`airflow/dags/etl_process.py`) but is designed to be independently testable and reusable.
+The core Python library that handles Zoom API communication, data transformation, and S3 storage. This code is called by both Airflow DAGs — the metadata ETL (`airflow/dags/etl_process.py`) and the recording deletion pipeline (`airflow/dags/delete_recording.py`) — but is designed to be independently testable and reusable.
 
 ## Module Structure
 
 ```
 src/
 ├── bootstrap.py            # Application initialization and dependency wiring
-├── clients/                # Zoom API client layer
+├── clients/                # AWS + Zoom client layer
 │   ├── zoom_client.py      # HTTP client for Zoom REST API
 │   ├── zoom_token.py       # Server-to-Server OAuth token management
-│   └── zoom_exceptions.py  # Custom exceptions for API errors
+│   ├── zoom_exceptions.py  # Custom exceptions for API errors
+│   ├── dynamodb_client.py  # Scans/updates the recording tracking table
+│   └── dynamodb_exceptions.py  # Custom exceptions for DynamoDB operations
 ├── services/               # Business logic layer
 │   ├── user_service.py     # Fetches and processes Zoom user data
 │   ├── meeting_service.py  # Fetches and processes meeting data
 │   ├── participant_service.py  # Fetches and processes participant data
+│   ├── delete_service.py   # Finds recordings eligible for deletion, verifies S3 archives
+│   ├── recording_service.py# Deletes recordings from Zoom's cloud via the API
 │   └── retry.py            # Retry logic for transient API failures
 ├── transforms/             # Data transformation layer
 │   ├── users.py            # User data normalization and cleaning
 │   ├── meetings.py         # Meeting data normalization and cleaning
 │   └── participants.py     # Participant data normalization and cleaning
-├── storage/                # Data output layer
+├── storage/                # Data I/O layer
 │   ├── s3_writer.py        # Writes transformed data to S3 as parquet
+│   ├── s3_reader.py        # HEAD-object checks to verify recordings exist in S3
 │   └── s3_exceptions.py    # Custom exceptions for S3 operations
 ├── config/
 │   └── settings.py         # Configuration management (env vars, defaults)
@@ -48,6 +53,18 @@ Zoom API  ──▶  zoom_client.py  ──▶  *_service.py  ──▶  transfo
    - `silver/<dataset>/...` — schema-enforced, cleaned data (`_transform_to_silver`)
    - `gold/<dataset>/...` — deduplicated, analytics-ready tables (`_build_gold_users`, `_build_gold_meetings`, `_build_gold_participants`)
 
+## Recording Deletion Flow
+
+The `Zoom_Recording_Deletion` DAG (`airflow/dags/delete_recording.py`) uses a second path through the library:
+
+```
+DynamoDB ──▶ delete_service.py ──▶ s3_reader.py ──▶ recording_service.py ──▶ DynamoDB
+(scan for      (eligibility +        (verify the        (DELETE via              (update
+ pending)       safety window)        S3 archive)        Zoom API)               delete_status)
+```
+
+`DeleteServices` scans the DynamoDB tracking table (via `DynamoDBClient`) for records with `delete_status = 'pending'` that were downloaded before the safety window, then `S3Reader` confirms each recording actually exists in S3 before anything is touched. `RecordingService` deletes the recordings from Zoom's cloud, grouped by meeting since Zoom's DELETE endpoint removes all recordings for a meeting at once. Recordings already gone from Zoom's side are marked `deleted_external` instead of failing the run.
+
 ## Authentication
 
 The library uses Zoom Server-to-Server OAuth (client credentials flow). Required credentials:
@@ -71,6 +88,7 @@ All configuration is managed through environment variables, loaded in `config/se
 | `Client_ID` | yes | Zoom OAuth Client ID |
 | `Client_Secret` | yes | Zoom OAuth Client Secret |
 | `REDIS_HOST` / `REDIS_PORT` | yes | Redis used for OAuth token caching/locking |
+| `DYNAMODB_TABLE_NAME` | yes (deletion DAG only) | DynamoDB table tracking downloaded recordings |
 | `AWS_REGION` | no (default `us-west-1`) | AWS region for S3 operations |
 | `ENVIRONMENT` | no (default `dev`) | One of `dev`, `staging`, `prod`; used as the S3 key prefix |
 | `MAX_RETRIES` | no (default `3`) | Retry attempts for failed API calls |

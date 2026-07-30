@@ -19,7 +19,7 @@ An ECS Fargate service that polls an SQS queue for Zoom recording completion eve
 
 ## How It Works
 
-1. The Zoom Webhook-Only app sends a `recording.completed` event to the `zoom_webhook_catch` Lambda.
+1. The Zoom Webhook-Only app sends a `recording.completed` event to the [`zoom_webhook_catch`](../zoom_webhook_catch/README.md) Lambda.
 2. The Lambda validates the webhook signature and pushes the event payload to an SQS queue.
 3. This service continuously polls the SQS queue and processes messages concurrently (`CONCURRENT_WORKERS` threads). For each recording event it:
    1. Parses the message payload and extracts the download URLs.
@@ -27,7 +27,7 @@ An ECS Fargate service that polls an SQS queue for Zoom recording completion eve
    3. Streams each recording file from Zoom directly to S3 (chunked download/upload, no local buffering of whole files).
    4. Generates CloudFront signed URLs for secure, time-limited access.
    5. Uploads the event payload/metadata to the S3 data lake raw zone.
-   6. Writes a tracking record to DynamoDB (`recording_id`, S3 key, `delete_status: pending`, timestamps) — used later to delete the recording from Zoom after a successful download.
+   6. Writes a tracking record to DynamoDB (`recording_id`, S3 key, `delete_status: pending`, timestamps) — consumed by the `Zoom_Recording_Deletion` Airflow DAG, which verifies the S3 archive and then deletes the recording from Zoom's cloud after a safety window (see [`src/README.md`](../src/README.md)).
 
 ## Module Structure
 

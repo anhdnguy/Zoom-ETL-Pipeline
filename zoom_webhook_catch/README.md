@@ -1,6 +1,6 @@
 # zoom_webhook_catch — Zoom Webhook Receiver (Lambda)
 
-An AWS Lambda function that receives Zoom webhook events (`recording.completed`), validates them, and forwards recording-file events to an SQS queue for the `zoom_recording_processor` ECS service to download.
+An AWS Lambda function that receives Zoom webhook events (`recording.completed`), validates them, and forwards recording-file events to an SQS queue for the [`zoom_recording_processor`](../zoom_recording_processor/README.md) ECS service to download.
 
 ## How It Works
 
@@ -32,6 +32,7 @@ Environment variables, set by Terraform in `infra/modules/lambda/main.tf`:
 | `BUCKET_NAME` | Data lake bucket (used to build target S3 keys) |
 | `REGION` | AWS region |
 | `ENVIRONMENT` | Environment name; used as the S3 key prefix |
+| `LOG_LEVEL` | Optional; Terraform sets `INFO` in prod, `DEBUG` otherwise |
 
 ## Deployment
 
